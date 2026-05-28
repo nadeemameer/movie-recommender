@@ -16,7 +16,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: movie-recommender-backend
     restart: unless-stopped
     environment:
