@@ -81,7 +81,7 @@ Save this value, you'll paste it into Render in the next step.
    - **Branch**: `main`
    - **Root Directory**: `backend`
    - **Runtime**: **Docker**
-   - **Dockerfile Path**: `Dockerfile.prod`
+   - **Dockerfile Path**: `Dockerfile` (default — the production Dockerfile)
    - **Plan**: Free
 4. Scroll to **Environment** → **Add Environment Variable** and add these
    one by one (paste values from your local `.env`, plus the Upstash URL):
@@ -134,15 +134,35 @@ Save this value, you'll paste it into Render in the next step.
 ## Step 5 — Wire up CORS (back to Render)
 
 The backend currently rejects requests because `FRONTEND_ORIGIN` is empty,
-which means it accepts only same-origin. Let's tell it to accept Vercel:
+which means it accepts only same-origin. Let's tell it to accept Vercel.
+
+Vercel assigns every deployment **multiple** URLs:
+
+- a canonical production URL: `https://your-app.vercel.app`
+- a per-deployment URL that changes on every push:
+  `https://your-app-<hash>-<team>-<scope>.vercel.app`
+- a per-git-branch URL: `https://your-app-git-<branch>-<team>.vercel.app`
+
+If you only allow the canonical one, anyone visiting via a per-deployment URL
+(common when clicking through Vercel's UI) hits a CORS wall. The backend
+supports **glob patterns** in `FRONTEND_ORIGIN` to cover all of them.
 
 1. Render dashboard → your backend service → **Environment** tab
-2. Edit `FRONTEND_ORIGIN` → set to your Vercel URL, e.g.
-   `https://movie-recommender-xyz.vercel.app`
+2. Edit `FRONTEND_ORIGIN` → set to a comma-separated list combining the
+   canonical URL and a wildcard for the others. Example for a Vercel project
+   named `movie-recommender-tau-khaki` under team `nadeems-projects`:
+
+   ```
+   https://movie-recommender-tau-khaki.vercel.app,https://movie-recommender-*-nadeems-projects-*.vercel.app
+   ```
+
+   The first `*` matches the deployment hash (e.g. `egns32oos`), the second
+   matches the team scope suffix. Find your exact pattern by visiting your
+   Vercel project's **Domains** tab.
 3. Click **Save Changes**. Render will redeploy (~30 seconds).
 
-> Tip: if you set up custom domains later, add them as comma-separated
-> values: `https://www.yoursite.com,https://movie-recommender-xyz.vercel.app`
+> Tip: if you set up a custom domain later, add it as another literal entry:
+> `https://www.yoursite.com,https://your-app.vercel.app,https://your-app-*-team-*.vercel.app`
 
 ---
 
