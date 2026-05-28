@@ -15,14 +15,34 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// CORS: lock to specific origins in production via FRONTEND_ORIGIN env var
-// (comma-separated for multiple). In dev, allow all so curl/Postman work too.
+// CORS: lock to specific origins in production via FRONTEND_ORIGIN env var.
+// Supports a comma-separated list of EITHER:
+//   - literal origins (e.g. "https://example.com"), or
+//   - glob-style patterns using "*" (e.g. "https://*.vercel.app")
+// In dev (no FRONTEND_ORIGIN set), allow all so curl/Postman work too.
+//
+// Why glob support: Vercel assigns multiple URLs to every deployment
+// (canonical + per-deployment + per-branch). Listing them all is brittle;
+// a single pattern like "https://movie-recommender-*.vercel.app" covers
+// every alias for this project.
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN;
+
+function globToRegex(pattern) {
+  // Escape regex metacharacters except '*', then turn '*' into '.*'
+  const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}$`);
+}
+
+const allowedOriginMatchers = FRONTEND_ORIGIN
+  ? FRONTEND_ORIGIN.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((entry) => (entry.includes('*') ? globToRegex(entry) : entry))
+  : null;
+
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN
-      ? FRONTEND_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean)
-      : true,
+    origin: allowedOriginMatchers ?? true,
     credentials: true,
   })
 );
